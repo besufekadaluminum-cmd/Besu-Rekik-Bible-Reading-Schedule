@@ -44,6 +44,95 @@ const ntBooks = [
     { name: "3 John", chapters: 1 }, { name: "Jude", chapters: 1 }, { name: "Revelation", chapters: 22 }
 ];
 
+// ===== English to Amharic Book Name Mapping =====
+// This maps English book names to their Amharic equivalents in the JSON file
+const englishToAmharicBookMap = {
+    // Gospels
+    "Matthew": "ማቴዎስ",
+    "Mark": "ማርቆስ",
+    "Luke": "ሉቃስ",
+    "John": "ዮሐንስ",
+    
+    // History
+    "Acts": "ሥራ ሐዋርያት",
+    
+    // Pauline Epistles
+    "Romans": "ሮሜ",
+    "1 Corinthians": "1 ቆሮንቶስ",
+    "2 Corinthians": "2 ቆሮንቶስ",
+    "Galatians": "ገላትያ",
+    "Ephesians": "ኤፌሶን",
+    "Philippians": "ፊልጵስዩስ",
+    "Colossians": "ቆላስይስ",
+    "1 Thessalonians": "1 ተሰሎንቄ",
+    "2 Thessalonians": "2 ተሰሎንቄ",
+    "1 Timothy": "1 ጢሞቴዎስ",
+    "2 Timothy": "2 ጢሞቴዎስ",
+    "Titus": "ቲቶ",
+    "Philemon": "ፊልሞና",
+    
+    // General Epistles
+    "Hebrews": "ዕብራውያን",
+    "James": "ያዕቆብ",
+    "1 Peter": "1 ጴጥሮስ",
+    "2 Peter": "2 ጴጥሮስ",
+    "1 John": "1 ዮሐንስ",
+    "2 John": "2 ዮሐንስ",
+    "3 John": "3 ዮሐንስ",
+    "Jude": "ይሁዳ",
+    
+    // Prophecy
+    "Revelation": "ራእይ"
+};
+
+// Reverse mapping for any Amharic to English lookups (if needed)
+const amharicToEnglishBookMap = Object.fromEntries(
+    Object.entries(englishToAmharicBookMap).map(([eng, amh]) => [amh, eng])
+);
+
+// Function to convert English book name to Amharic for API calls
+function getAmharicBookName(englishBookName) {
+    // Handle variations (like "1 Corinthians" vs "1Corinthians")
+    let normalizedName = englishBookName.trim();
+    
+    // Map common variations
+    if (normalizedName === "1 Corinthians" || normalizedName === "1Corinthians" || normalizedName === "1 cor") {
+        return englishToAmharicBookMap["1 Corinthians"];
+    }
+    if (normalizedName === "2 Corinthians" || normalizedName === "2Corinthians" || normalizedName === "2 cor") {
+        return englishToAmharicBookMap["2 Corinthians"];
+    }
+    if (normalizedName === "1 Thessalonians" || normalizedName === "1Thessalonians") {
+        return englishToAmharicBookMap["1 Thessalonians"];
+    }
+    if (normalizedName === "2 Thessalonians" || normalizedName === "2Thessalonians") {
+        return englishToAmharicBookMap["2 Thessalonians"];
+    }
+    if (normalizedName === "1 Timothy" || normalizedName === "1Timothy") {
+        return englishToAmharicBookMap["1 Timothy"];
+    }
+    if (normalizedName === "2 Timothy" || normalizedName === "2Timothy") {
+        return englishToAmharicBookMap["2 Timothy"];
+    }
+    if (normalizedName === "1 Peter" || normalizedName === "1Peter") {
+        return englishToAmharicBookMap["1 Peter"];
+    }
+    if (normalizedName === "2 Peter" || normalizedName === "2Peter") {
+        return englishToAmharicBookMap["2 Peter"];
+    }
+    if (normalizedName === "1 John" || normalizedName === "1John") {
+        return englishToAmharicBookMap["1 John"];
+    }
+    if (normalizedName === "2 John" || normalizedName === "2John") {
+        return englishToAmharicBookMap["2 John"];
+    }
+    if (normalizedName === "3 John" || normalizedName === "3John") {
+        return englishToAmharicBookMap["3 John"];
+    }
+    
+    return englishToAmharicBookMap[normalizedName] || englishBookName;
+}
+
 // Reading plan structure
 let readingPlan = [];
 const START_DATE = new Date(2026, 4, 13); // May 13, 2026 (month is 0-indexed, so 4 = May)
@@ -70,10 +159,15 @@ function generateReadingPlan() {
             const toTake = Math.min(CHAPTERS_PER_DAY - chaptersAdded, remainingInBook);
             
             if (toTake === 1) {
-                reading.ntPassages.push({ book: book.name, chapter: ntChapter });
+                reading.ntPassages.push({ 
+                    book: book.name, 
+                    amharicBook: getAmharicBookName(book.name),
+                    chapter: ntChapter 
+                });
             } else {
                 reading.ntPassages.push({
                     book: book.name,
+                    amharicBook: getAmharicBookName(book.name),
                     startChapter: ntChapter,
                     endChapter: ntChapter + toTake - 1
                 });
@@ -91,7 +185,6 @@ function generateReadingPlan() {
         plan.push(reading);
         day++;
         
-        // Safety break to prevent infinite loop
         if (day > 500) break;
     }
     
@@ -108,6 +201,281 @@ function assignDatesToPlan() {
     });
 }
 assignDatesToPlan();
+
+// ===== Amharic Bible Integration (UI remains in English) =====
+
+async function fetchAmharicVerse(book, chapter, verse) {
+    try {
+        // Use the Amharic book name for the API call
+        const amharicBook = getAmharicBookName(book);
+        const response = await fetch(`/api/amharic-bible?book=${encodeURIComponent(amharicBook)}&chapter=${chapter}&verse=${verse}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch verse');
+        }
+        const data = await response.json();
+        return data.text;
+    } catch (error) {
+        console.error('Error fetching Amharic verse:', error);
+        return null;
+    }
+}
+
+async function fetchAmharicPassage(book, startChapter, endChapter, startVerse, endVerse) {
+    try {
+        const amharicBook = getAmharicBookName(book);
+        let allText = '';
+        
+        for (let ch = startChapter; ch <= endChapter; ch++) {
+            const response = await fetch(`/api/amharic-bible?book=${encodeURIComponent(amharicBook)}&chapter=${ch}`);
+            if (!response.ok) {
+                continue;
+            }
+            const data = await response.json();
+            
+            const verseStart = (ch === startChapter) ? startVerse : 1;
+            let verseEnd = endVerse;
+            if (data.verses) {
+                const maxVerse = Object.keys(data.verses).length;
+                verseEnd = (ch === endChapter) ? Math.min(endVerse, maxVerse) : maxVerse;
+            }
+            
+            if (ch > startChapter) {
+                allText += `\n\n--- ${book} ${ch} ---\n\n`;
+            }
+            
+            for (let v = verseStart; v <= verseEnd; v++) {
+                if (data.verses && data.verses[v]) {
+                    allText += `${v}. ${data.verses[v]}\n\n`;
+                }
+            }
+        }
+        
+        return allText || null;
+    } catch (error) {
+        console.error('Error fetching Amharic passage:', error);
+        return null;
+    }
+}
+
+function createAmharicModal() {
+    if (document.getElementById('amharic-modal')) return;
+    
+    const modalHTML = `
+        <div id="amharic-modal" class="amharic-modal" style="display: none;">
+            <div class="amharic-modal-content">
+                <div class="amharic-modal-header">
+                    <h3>📖 Amharic Bible Text</h3>
+                    <button id="close-amharic-modal" class="close-modal">&times;</button>
+                </div>
+                <div class="amharic-modal-body">
+                    <div class="amharic-reference" id="amharic-reference"></div>
+                    <div class="amharic-text" id="amharic-text"></div>
+                </div>
+                <div class="amharic-modal-footer">
+                    <button id="copy-amharic-text" class="btn-copy">📋 Copy to Clipboard</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    const modalStyles = `
+        <style>
+            .amharic-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.85);
+                z-index: 3000;
+                justify-content: center;
+                align-items: center;
+                backdrop-filter: blur(5px);
+            }
+            .amharic-modal-content {
+                background: white;
+                max-width: 600px;
+                width: 90%;
+                max-height: 80vh;
+                border-radius: 20px;
+                overflow: hidden;
+                box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+                border: 2px solid var(--gold);
+                display: flex;
+                flex-direction: column;
+            }
+            .amharic-modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem 1.5rem;
+                background: linear-gradient(135deg, var(--deep-blue), var(--deep-blue-light));
+                color: white;
+                border-bottom: 2px solid var(--gold);
+            }
+            .amharic-modal-header h3 {
+                margin: 0;
+                font-family: 'Cormorant Garamond', serif;
+            }
+            .close-modal {
+                background: none;
+                border: none;
+                font-size: 2rem;
+                cursor: pointer;
+                color: white;
+                transition: transform 0.2s;
+            }
+            .close-modal:hover {
+                transform: scale(1.1);
+            }
+            .amharic-modal-body {
+                padding: 1.5rem;
+                overflow-y: auto;
+                flex: 1;
+            }
+            .amharic-reference {
+                font-family: 'Cormorant Garamond', serif;
+                font-size: 1.2rem;
+                font-weight: 700;
+                color: var(--gold-dark);
+                margin-bottom: 1rem;
+                padding-bottom: 0.5rem;
+                border-bottom: 2px solid var(--gold-light);
+            }
+            .amharic-text {
+                font-family: 'Noto Sans Ethiopic', 'Merriweather', serif;
+                font-size: 1.1rem;
+                line-height: 1.8;
+                color: var(--text-dark);
+                white-space: pre-wrap;
+                direction: ltr;
+            }
+            .amharic-modal-footer {
+                padding: 1rem 1.5rem;
+                border-top: 1px solid var(--gold-light);
+                display: flex;
+                justify-content: flex-end;
+            }
+            .btn-copy {
+                background: var(--gold);
+                border: none;
+                padding: 0.5rem 1rem;
+                border-radius: 8px;
+                cursor: pointer;
+                font-family: 'Cormorant Garamond', serif;
+                font-weight: 600;
+                transition: all 0.2s;
+            }
+            .btn-copy:hover {
+                background: var(--gold-dark);
+                color: white;
+            }
+            .btn-amharic {
+                background: linear-gradient(135deg, var(--deep-blue), var(--deep-blue-light));
+                color: white;
+                border: none;
+                padding: 0.25rem 0.75rem;
+                border-radius: 15px;
+                cursor: pointer;
+                font-size: 0.75rem;
+                font-family: 'Cormorant Garamond', serif;
+                margin-left: 0.5rem;
+                transition: all 0.2s;
+            }
+            .btn-amharic:hover {
+                background: var(--gold);
+                color: var(--deep-blue);
+                transform: scale(1.05);
+            }
+            .loading-amharic {
+                color: #666;
+                font-style: italic;
+                text-align: center;
+                padding: 2rem;
+            }
+        </style>
+    `;
+    document.head.insertAdjacentHTML('beforeend', modalStyles);
+    
+    document.getElementById('close-amharic-modal').addEventListener('click', () => {
+        document.getElementById('amharic-modal').style.display = 'none';
+    });
+    
+    document.getElementById('copy-amharic-text').addEventListener('click', async () => {
+        const text = document.getElementById('amharic-text').innerText;
+        await navigator.clipboard.writeText(text);
+        showToast('Amharic text copied to clipboard!', 'success');
+    });
+    
+    document.getElementById('amharic-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('amharic-modal')) {
+            document.getElementById('amharic-modal').style.display = 'none';
+        }
+    });
+}
+
+async function showAmharicForPassage(ntPassages) {
+    if (!ntPassages || ntPassages.length === 0) {
+        showToast('No Amharic text available for this reading', 'warning');
+        return;
+    }
+    
+    createAmharicModal();
+    
+    const modal = document.getElementById('amharic-modal');
+    const referenceEl = document.getElementById('amharic-reference');
+    const textEl = document.getElementById('amharic-text');
+    
+    modal.style.display = 'flex';
+    textEl.innerHTML = '<div class="loading-amharic">Loading Amharic text... 📖</div>';
+    
+    let allText = '';
+    let references = [];
+    
+    for (const passage of ntPassages) {
+        let book = passage.book;
+        let startChapter, endChapter, startVerse, endVerse;
+        
+        if (passage.chapter) {
+            startChapter = passage.chapter;
+            endChapter = passage.chapter;
+            startVerse = passage.chapter;
+            endVerse = passage.chapter;
+            references.push(`${book} ${passage.chapter}`);
+            
+            const verseText = await fetchAmharicVerse(book, passage.chapter, passage.chapter);
+            if (verseText) {
+                allText += `${book} ${passage.chapter}\n\n${verseText}\n\n`;
+            }
+        } else if (passage.startChapter && passage.endChapter) {
+            startChapter = passage.startChapter;
+            endChapter = passage.endChapter;
+            startVerse = passage.startChapter;
+            endVerse = passage.endChapter;
+            
+            if (startChapter === endChapter) {
+                references.push(`${book} ${startChapter}:${startVerse}-${endVerse}`);
+            } else {
+                references.push(`${book} ${startChapter}-${endChapter}`);
+            }
+            
+            const passageText = await fetchAmharicPassage(book, startChapter, endChapter, startVerse, endVerse);
+            if (passageText) {
+                allText += passageText;
+            }
+        }
+    }
+    
+    referenceEl.textContent = `Amharic: ${references.join(', ')}`;
+    
+    if (allText) {
+        textEl.innerHTML = allText.replace(/\n/g, '<br>');
+    } else {
+        textEl.innerHTML = '<div class="loading-amharic">⚠️ Could not load Amharic text. Please try again later.</div>';
+    }
+}
 
 // ===== Notification Functions =====
 function isTodayReadingComplete() {
@@ -169,7 +537,6 @@ function shouldSendReminder() {
     const now = new Date();
     const hours = now.getHours();
     
-    // Only send between 6 AM and 9 PM (6-21)
     if (hours >= 6 && hours <= 21) {
         const lastReminderTime = localStorage.getItem('last-reminder-time');
         const nowTime = now.getTime();
@@ -204,21 +571,13 @@ function startNotificationScheduler() {
         }
         
         if (shouldSendReminder()) {
-            const now = new Date();
-            const hours = now.getHours();
-            let timeOfDay = '';
-            
-            if (hours < 12) timeOfDay = 'morning';
-            else if (hours < 17) timeOfDay = 'afternoon';
-            else timeOfDay = 'evening';
-            
             await sendNotification(
                 '📖 Bible Reading Reminder',
                 `Don't forget to complete your ${CHAPTERS_PER_DAY} New Testament chapters for today! 🌅`,
                 'reading-reminder'
             );
             
-            localStorage.setItem('last-reminder-time', now.getTime().toString());
+            localStorage.setItem('last-reminder-time', Date.now().toString());
         }
     }, 3600000);
 }
@@ -563,7 +922,12 @@ function renderReadingList(viewing = false) {
                 </div>
             </div>
             <div class="card-middle">
-                <div class="passage-container">${passageHTML}</div>
+                <div class="passage-container">
+                    ${passageHTML}
+                    <button class="btn-amharic" data-nt-passages='${JSON.stringify(day.ntPassages)}'>
+                        📖 Amharic
+                    </button>
+                </div>
                 <div class="reading-meta">
                     ${day.isCurrent ? '<span class="current-badge">Current Reading</span>' : ''}
                 </div>
@@ -585,12 +949,23 @@ function renderReadingList(viewing = false) {
         container.appendChild(dayCard);
     });
     
+    document.querySelectorAll('.btn-amharic').forEach(btn => {
+        btn.removeEventListener('click', handleAmharicClick);
+        btn.addEventListener('click', handleAmharicClick);
+    });
+    
     if (!viewing) {
         document.querySelectorAll('.checkbox-wrapper input:not([disabled])').forEach(checkbox => {
             checkbox.removeEventListener('change', handleCheckboxChange);
             checkbox.addEventListener('change', handleCheckboxChange);
         });
     }
+}
+
+async function handleAmharicClick(e) {
+    e.stopPropagation();
+    const ntPassages = JSON.parse(e.currentTarget.dataset.ntPassages);
+    await showAmharicForPassage(ntPassages);
 }
 
 function handleCheckboxChange(e) {
@@ -695,10 +1070,15 @@ function updateTodayHighlight(viewing = false) {
                     <div class="today-day">Day ${todayReading.day}</div>
                     <div class="today-passage">${passageHTML}</div>
                 </div>
-                <button class="btn-mark-read ${isCompleted ? 'completed' : ''}" data-day="${todayReading.day}" ${isCompleted || viewing ? 'disabled' : ''}>
-                    <span class="btn-icon">${isCompleted ? '✓' : '◉'}</span>
-                    <span class="btn-text">${isCompleted ? 'Completed' : 'Mark as Read'}</span>
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-mark-read ${isCompleted ? 'completed' : ''}" data-day="${todayReading.day}" ${isCompleted || viewing ? 'disabled' : ''}>
+                        <span class="btn-icon">${isCompleted ? '✓' : '◉'}</span>
+                        <span class="btn-text">${isCompleted ? 'Completed' : 'Mark as Read'}</span>
+                    </button>
+                    <button class="btn-amharic" data-nt-passages='${JSON.stringify(todayReading.ntPassages)}'>
+                        📖 Amharic
+                    </button>
+                </div>
             </div>
         `;
         
@@ -709,10 +1089,22 @@ function updateTodayHighlight(viewing = false) {
                 btn.addEventListener('click', handleTodayClick);
             }
         }
+        
+        const todayAmharicBtn = highlightElement.querySelector('.btn-amharic');
+        if (todayAmharicBtn) {
+            todayAmharicBtn.removeEventListener('click', handleTodayAmharicClick);
+            todayAmharicBtn.addEventListener('click', handleTodayAmharicClick);
+        }
     } else {
         highlightElement.innerHTML = `<div class="today-header"><div class="today-icon">📖</div><div class="today-title-section"><span class="today-label">Reading Plan</span></div></div>
             <div class="today-content"><div class="today-message">Continue your daily reading journey! 📚</div></div>`;
     }
+}
+
+async function handleTodayAmharicClick(e) {
+    e.stopPropagation();
+    const ntPassages = JSON.parse(e.currentTarget.dataset.ntPassages);
+    await showAmharicForPassage(ntPassages);
 }
 
 function handleTodayClick(e) {
@@ -839,7 +1231,6 @@ function completeUserSelection(userId) {
     
     showToast(`Welcome, ${welcomeName}! ✝️`, "success");
     
-    // Initialize notification system
     initNotificationSystem();
 }
 
@@ -972,7 +1363,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
     
-    // Register service worker for notifications
     if ('serviceWorker' in navigator) {
         try {
             const registration = await navigator.serviceWorker.register('/service-worker.js');
