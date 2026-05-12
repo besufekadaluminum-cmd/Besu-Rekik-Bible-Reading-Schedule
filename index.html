@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bible Reading - 5 Chapters Daily Plan</title>
+    <title>Bible Reading - New Testament (3 Chapters Daily)</title>
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#D4AF37">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Bible Reading">
+    <meta name="apple-mobile-web-app-title" content="Bible Reading NT">
     
     <!-- Link to Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -414,41 +414,31 @@
 <body>
     <!-- User Selection Screen -->
     <div id="user-selector" class="user-selector">
-        <!-- Belidet -->
+        <!-- Besu -->
         <div class="user-card" id="select-user1">
             <div class="user-avatar">
                 ✝️
             </div>
-            <div class="user-name">Belidet</div>
+            <div class="user-name">Besu</div>
             <div class="pin-hint">🔒 PIN protected</div>
-            <p>Belidet's Progress</p>
+            <p>Besu's Progress</p>
         </div>
         
-        <!-- Ephi -->
+        <!-- Rekik -->
         <div class="user-card" id="select-user2">
             <div class="user-avatar">
                 ✝️
             </div>
-            <div class="user-name">Ephi</div>
+            <div class="user-name">Rekik</div>
             <div class="pin-hint">🔒 PIN protected</div>
-            <p>Ephi's Progress</p>
-        </div>
-        
-        <!-- Sari -->
-        <div class="user-card" id="select-user3">
-            <div class="user-avatar">
-                ✝️
-            </div>
-            <div class="user-name">Sari</div>
-            <div class="pin-hint">🔒 PIN protected</div>
-            <p>Sari's Progress</p>
+            <p>Rekik's Progress</p>
         </div>
     </div>
     
     <!-- PIN Modal -->
     <div id="pin-modal" class="pin-modal">
         <div class="pin-modal-content">
-            <h3 id="pin-user-name">Belidet</h3>
+            <h3 id="pin-user-name">Besu</h3>
             <p>Enter your 4-digit PIN to continue</p>
             <div class="pin-input-container">
                 <input type="password" maxlength="1" class="pin-digit" id="pin-1" autofocus>
@@ -495,14 +485,14 @@
                 </div>
             </div>
             <h1 class="app-title">Bible Reading</h1>
-            <p class="app-subtitle">5 Chapters Daily - Complete the Bible</p>
+            <p class="app-subtitle">New Testament • 3 Chapters Daily • Starting May 13, 2026</p>
         </header>
         
         <!-- Statistics Section -->
         <div class="stats-container">
             <div class="stats-header">
                 <h3>📊 Reading Statistics</h3>
-                <button id="view-other-btn" class="view-other-btn">👥 View</button>
+                <button id="view-other-btn" class="view-other-btn">👥 View Other</button>
             </div>
             <div class="stats-grid">
                 <div class="stat-card">
@@ -520,10 +510,6 @@
                 <div class="stat-card">
                     <div class="stat-number" id="stat-nt-read">0</div>
                     <div class="stat-label">NT Chapters</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="stat-ot-read">0</div>
-                    <div class="stat-label">OT Chapters</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="stat-total-chapters">0</div>
