@@ -26,6 +26,11 @@ let userProgress = {
     user2: { completedDays: [], name: "Rekik" }
 };
 
+// ===== Notification System Variables =====
+let notificationInterval = null;
+let notificationPermissionGranted = false;
+const CHAPTERS_PER_DAY = 3;
+
 // ===== New Testament Bible Data (Only NT) =====
 const ntBooks = [
     { name: "Matthew", chapters: 28 }, { name: "Mark", chapters: 16 }, { name: "Luke", chapters: 24 },
@@ -47,7 +52,6 @@ function generateReadingPlan() {
     const plan = [];
     let ntBookIndex = 0, ntChapter = 1;
     let day = 1;
-    const CHAPTERS_PER_DAY = 3;
     
     while (ntBookIndex < ntBooks.length) {
         const reading = {
@@ -105,14 +109,206 @@ function assignDatesToPlan() {
 }
 assignDatesToPlan();
 
+// ===== Notification Functions =====
+function isTodayReadingComplete() {
+    if (!currentUser) return true;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayReading = readingPlan.find(d => {
+        const dDate = new Date(d.date);
+        dDate.setHours(0, 0, 0, 0);
+        return dDate.getTime() === today.getTime();
+    });
+    
+    if (!todayReading) return true;
+    
+    const completedDays = userProgress[currentUser]?.completedDays || [];
+    return completedDays.includes(todayReading.day);
+}
+
+async function sendNotification(title, body, tag = 'reading-reminder') {
+    if (!notificationPermissionGranted) return;
+    
+    const lastNotificationTime = localStorage.getItem(`last-notification-${tag}`);
+    const now = Date.now();
+    
+    if (lastNotificationTime && (now - parseInt(lastNotificationTime)) < 3600000) {
+        console.log('Notification already sent recently for this tag');
+        return;
+    }
+    
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification(title, {
+            body: body,
+            icon: '/images.jpg',
+            badge: '/icons/icon-96x96.png',
+            tag: tag,
+            renotify: false,
+            requireInteraction: true,
+            actions: [
+                { action: 'open', title: '📖 Open Reading' },
+                { action: 'mark', title: '✓ Mark as Read' }
+            ],
+            data: {
+                url: '/',
+                type: 'reading-reminder'
+            }
+        });
+        
+        localStorage.setItem(`last-notification-${tag}`, now.toString());
+        console.log('Notification sent:', title);
+    } catch (error) {
+        console.error('Error sending notification:', error);
+    }
+}
+
+function shouldSendReminder() {
+    const now = new Date();
+    const hours = now.getHours();
+    
+    // Only send between 6 AM and 9 PM (6-21)
+    if (hours >= 6 && hours <= 21) {
+        const lastReminderTime = localStorage.getItem('last-reminder-time');
+        const nowTime = now.getTime();
+        
+        if (lastReminderTime) {
+            const hoursSinceLastReminder = (nowTime - parseInt(lastReminderTime)) / (1000 * 60 * 60);
+            if (hoursSinceLastReminder >= 5) {
+                return true;
+            }
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+function startNotificationScheduler() {
+    if (notificationInterval) {
+        clearInterval(notificationInterval);
+    }
+    
+    notificationInterval = setInterval(async () => {
+        if (!currentUser || !notificationPermissionGranted) return;
+        
+        const isComplete = isTodayReadingComplete();
+        
+        if (isComplete) {
+            localStorage.removeItem('last-reminder-time');
+            localStorage.removeItem('reminder-sent-today');
+            console.log('Today\'s reading is complete - no reminders needed');
+            return;
+        }
+        
+        if (shouldSendReminder()) {
+            const now = new Date();
+            const hours = now.getHours();
+            let timeOfDay = '';
+            
+            if (hours < 12) timeOfDay = 'morning';
+            else if (hours < 17) timeOfDay = 'afternoon';
+            else timeOfDay = 'evening';
+            
+            await sendNotification(
+                '📖 Bible Reading Reminder',
+                `Don't forget to complete your ${CHAPTERS_PER_DAY} New Testament chapters for today! 🌅`,
+                'reading-reminder'
+            );
+            
+            localStorage.setItem('last-reminder-time', now.getTime().toString());
+        }
+    }, 3600000);
+}
+
+function stopNotificationScheduler() {
+    if (notificationInterval) {
+        clearInterval(notificationInterval);
+        notificationInterval = null;
+    }
+}
+
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('This browser does not support notifications');
+        return false;
+    }
+    
+    if (Notification.permission === 'granted') {
+        notificationPermissionGranted = true;
+        startNotificationScheduler();
+        return true;
+    }
+    
+    if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        notificationPermissionGranted = permission === 'granted';
+        
+        if (notificationPermissionGranted) {
+            startNotificationScheduler();
+            await sendNotification(
+                '✅ Notifications Enabled',
+                'You will receive reading reminders between 6 AM and 9 PM if you haven\'t completed your daily reading.',
+                'welcome-notification'
+            );
+        }
+        return notificationPermissionGranted;
+    }
+    
+    return false;
+}
+
+function initNotificationSystem() {
+    if (!currentUser) return;
+    
+    const notificationBanner = document.getElementById('notification-banner');
+    if (notificationBanner && Notification.permission !== 'granted') {
+        notificationBanner.classList.remove('hidden');
+        
+        const enableBtn = document.getElementById('enable-notifications');
+        if (enableBtn) {
+            enableBtn.onclick = async () => {
+                const granted = await requestNotificationPermission();
+                if (granted) {
+                    notificationBanner.classList.add('hidden');
+                    showToast('Notifications enabled! 📬', 'success');
+                } else {
+                    showToast('Notification permission denied', 'warning');
+                }
+            };
+        }
+    } else if (notificationPermissionGranted) {
+        if (notificationBanner) notificationBanner.classList.add('hidden');
+        startNotificationScheduler();
+    }
+}
+
+function updateNotificationOnCompletion() {
+    if (isTodayReadingComplete()) {
+        localStorage.removeItem('last-reminder-time');
+        localStorage.removeItem('reminder-sent-today');
+        console.log('Reading completed - notifications silenced for today');
+        
+        if (notificationPermissionGranted) {
+            sendNotification(
+                '🎉 Great Job!',
+                'You\'ve completed today\'s Bible reading. Keep up the wonderful habit!',
+                'completion-notification'
+            );
+        }
+    }
+}
+
 // ===== Storage Functions =====
 function saveLocalProgress(userId, completedDays) {
-    localStorage.setItem(`bible-reading-${userId}`, JSON.stringify(completedDays));
+    localStorage.setItem(`bible-reading-nt-${userId}`, JSON.stringify(completedDays));
     console.log(`Saved locally for ${userId}: ${completedDays.length} days`);
 }
 
 function loadLocalProgress(userId) {
-    const stored = localStorage.getItem(`bible-reading-${userId}`);
+    const stored = localStorage.getItem(`bible-reading-nt-${userId}`);
     return stored ? JSON.parse(stored) : [];
 }
 
@@ -305,6 +501,7 @@ function toggleDay(dayNum) {
     renderCalendar(false);
     updateTodayHighlight(false);
     updateStatistics(false);
+    updateNotificationOnCompletion();
     
     const card = document.querySelector(`.day-card[data-day="${dayNum}"]`);
     if (card) {
@@ -641,6 +838,9 @@ function completeUserSelection(userId) {
     else if (userId === 'user2') welcomeName = "Rekik";
     
     showToast(`Welcome, ${welcomeName}! ✝️`, "success");
+    
+    // Initialize notification system
+    initNotificationSystem();
 }
 
 function selectUser(userId) {
@@ -689,6 +889,7 @@ function switchBackToSelf() {
 }
 
 function switchUser() {
+    stopNotificationScheduler();
     viewingOtherUser = false;
     otherUser = null;
     currentUser = null;
@@ -715,6 +916,10 @@ async function loadUserProgress(viewing = false) {
     renderCalendar(viewing);
     updateTodayHighlight(viewing);
     updateStatistics(viewing);
+    
+    if (!viewing && notificationPermissionGranted) {
+        updateNotificationOnCompletion();
+    }
 }
 
 function showToast(message, type = "info") {
@@ -766,4 +971,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             verifyPin();
         }
     });
+    
+    // Register service worker for notifications
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.register('/service-worker.js');
+            console.log('Service Worker registered successfully');
+        } catch (error) {
+            console.error('Service Worker registration failed:', error);
+        }
+    }
 });
