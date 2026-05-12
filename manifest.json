@@ -1,7 +1,7 @@
 {
-  "name": "Bible Reading - 5 Chapters Daily Plan",
-  "short_name": "Bible Reading",
-  "description": "Complete the Bible with 5 chapters daily. Started April 13, 2026. For Belidet and Ephi.",
+  "name": "Bible Reading - New Testament (3 Chapters Daily)",
+  "short_name": "Bible Reading NT",
+  "description": "Read the New Testament with 3 chapters daily. Started May 13, 2026. For Besu and Rekik.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
