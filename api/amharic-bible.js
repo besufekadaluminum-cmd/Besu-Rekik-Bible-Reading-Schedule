@@ -1,239 +1,205 @@
 // api/amharic-bible.js
-// API endpoint to serve Amharic Bible verses - Handles missing files gracefully
+// Proxy API that fetches from external Amharic Bible source
+
+// External Amharic Bible sources (try in order until one works)
+const BIBLE_SOURCES = [
+  'https://raw.githubusercontent.com/magna25/amharic-bible-json/main/bible.json',
+  'https://cdn.jsdelivr.net/gh/getbible/Unbound-Biola/Amharic__Haile_Selassie_Amharic_Bible__hsab__LTR.json',
+  'https://raw.githubusercontent.com/Dawit-Sh/Amharic-Bible-Markdown/main/bible.json'
+];
+
+let cachedBibleData = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export default async function handler(req, res) {
-  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // Only allow GET requests
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed. Use GET.' });
-  }
-
   const { book, chapter, verse } = req.query;
 
-  // Validate required parameters
   if (!book || !chapter) {
-    return res.status(400).json({ 
-      error: 'Missing parameters. Use ?book=John&chapter=3&verse=16 (verse is optional)',
-      success: false
+    return res.status(200).json({ 
+      success: false,
+      error: 'Missing parameters. Use ?book=Matthew&chapter=1&verse=16',
+      demo: true,
+      text: getDemoAmharicText(book, chapter, verse)
     });
   }
 
   try {
-    // Try multiple possible paths for the JSON file
-    let bibleData = null;
-    let fileFound = false;
+    let bibleData = await getBibleData();
     
-    // List of possible paths to check
-    const possiblePaths = [
-      path.join(process.cwd(), 'public', 'data', 'amharic-bible.json'),
-      path.join(process.cwd(), 'data', 'amharic-bible.json'),
-      path.join(process.cwd(), 'amharic-bible.json'),
-      path.join(process.cwd(), 'public', 'amharic-bible.json')
-    ];
-    
-    // Try to find the file
-    for (const filePath of possiblePaths) {
-      try {
-        if (fs.existsSync(filePath)) {
-          const fileContents = fs.readFileSync(filePath, 'utf8');
-          bibleData = JSON.parse(fileContents);
-          fileFound = true;
-          console.log(`Amharic Bible data loaded from: ${filePath}`);
-          break;
-        }
-      } catch (err) {
-        // Continue to next path
-        continue;
-      }
-    }
-    
-    // If file not found, return demo data instead of error
-    if (!fileFound || !bibleData) {
-      console.log('Amharic Bible data file not found - returning demo data');
-      return sendDemoData(res, book, chapter, verse);
-    }
-    
-    // Decode the book name (handle Amharic characters in URL)
-    const decodedBook = decodeURIComponent(book);
-    const normalizedBook = normalizeBookName(decodedBook);
-    const bookData = bibleData[normalizedBook] || bibleData[decodedBook];
-    
-    if (!bookData) {
-      // Return demo data instead of error
-      console.log(`Book "${book}" not found in data - returning demo data`);
-      return sendDemoData(res, book, chapter, verse);
-    }
-
-    // Convert chapter to number
-    const chapterNum = parseInt(chapter, 10);
-    const chapterData = bookData[chapterNum];
-    
-    if (!chapterData) {
-      // Return demo data instead of error
-      console.log(`Chapter ${chapterNum} not found - returning demo data`);
-      return sendDemoData(res, book, chapter, verse);
-    }
-
-    // If verse is specified, return just that verse
-    if (verse) {
-      const verseNum = parseInt(verse, 10);
-      const verseText = chapterData[verseNum];
-      
-      if (!verseText) {
-        // Return demo data instead of error
-        return sendDemoData(res, book, chapter, verse);
-      }
-      
+    if (!bibleData) {
       return res.status(200).json({
         success: true,
-        reference: `${normalizedBook} ${chapterNum}:${verseNum}`,
-        book: normalizedBook,
-        chapter: chapterNum,
-        verse: verseNum,
-        text: verseText
+        demo: true,
+        book: book,
+        chapter: chapter,
+        verse: verse || 'all',
+        text: getDemoAmharicText(book, chapter, verse),
+        message: "Using demo Amharic text. External Bible source temporarily unavailable."
       });
     }
+
+    const bookData = findBookData(bibleData, book);
     
-    // Return entire chapter if no verse specified
+    if (!bookData) {
+      return res.status(200).json({
+        success: true,
+        demo: true,
+        book: book,
+        chapter: chapter,
+        text: getDemoAmharicText(book, chapter, verse),
+        message: `Book "${book}" not found in external source. Using demo text.`
+      });
+    }
+
+    const chapterData = bookData[chapter];
+    
+    if (!chapterData) {
+      return res.status(200).json({
+        success: true,
+        demo: true,
+        book: book,
+        chapter: chapter,
+        text: getDemoAmharicText(book, chapter, verse),
+        message: `Chapter ${chapter} not found. Using demo text.`
+      });
+    }
+
+    if (verse) {
+      const verseText = chapterData[verse];
+      return res.status(200).json({
+        success: true,
+        reference: `${book} ${chapter}:${verse}`,
+        text: verseText || getDemoAmharicText(book, chapter, verse),
+        book: book,
+        chapter: chapter,
+        verse: verse
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      reference: `${normalizedBook} ${chapterNum}`,
-      book: normalizedBook,
-      chapter: chapterNum,
+      reference: `${book} ${chapter}`,
       verses: chapterData,
-      verseCount: Object.keys(chapterData).length
+      verseCount: Object.keys(chapterData).length,
+      book: book,
+      chapter: chapter
     });
-    
+
   } catch (error) {
-    console.error('Amharic Bible API Error:', error);
-    // Return demo data instead of error
-    return sendDemoData(res, book, chapter, verse);
+    console.error('API Error:', error);
+    return res.status(200).json({
+      success: true,
+      demo: true,
+      book: book,
+      chapter: chapter,
+      verse: verse || 'all',
+      text: getDemoAmharicText(book, chapter, verse),
+      error: error.message
+    });
   }
 }
 
-// Function to send demo data when real data is not available
-function sendDemoData(res, book, chapter, verse) {
-  const demoVerses = {
-    "1": "በመጀመሪያ እግዚአብሔር ሰማያትንና ምድርን ፈጠረ።",
-    "2": "ምድር ግን ባድማ ባዶ ነበረች፤ ጥላቻም በጥልቁ ላይ ነበረ፤ የእግዚአብሔርም መንፈስ በውኃው ላይ ይንደርደር ነበር።",
-    "3": "እግዚአብሔርም። ብርሃን ይሁን አለ፤ ብርሃንም ሆነ።",
-    "16": "እግዚአብሔር ዓለሙን እንዲሁ ወደደ፤ አንድ ወልድ ልጁን እንኳ ሰጠ፥ በእርሱ የሚያምን ሁሉ ይጠፋ ዘንድ አይደለም ነገር ግን የዘላለም ሕይወት ይኖረው ዘንድ ነው።"
-  };
-  
-  const chapterNum = parseInt(chapter, 10) || 1;
-  const verseNum = parseInt(verse, 10) || 1;
-  
-  // Create demo chapter data with common verses
-  let demoChapterData = {};
-  for (let i = 1; i <= 30; i++) {
-    if (demoVerses[i]) {
-      demoChapterData[i] = demoVerses[i];
-    } else {
-      demoChapterData[i] = `ቁጥር ${i}፤ ይህ የአማርኛ መጽሐፍ ቅዱስ ጽሑፍ ነው። እባክዎ የሚሰራውን የ JSON ፋይል ያውርዱ።`;
+async function getBibleData() {
+  if (cachedBibleData && (Date.now() - lastFetchTime) < CACHE_DURATION) {
+    return cachedBibleData;
+  }
+
+  for (const source of BIBLE_SOURCES) {
+    try {
+      console.log(`Trying to fetch from: ${source}`);
+      const response = await fetch(source);
+      
+      if (response.ok) {
+        const data = await response.json();
+        cachedBibleData = data;
+        lastFetchTime = Date.now();
+        console.log(`Successfully loaded Bible data from: ${source}`);
+        return data;
+      }
+    } catch (error) {
+      console.log(`Failed to fetch from ${source}:`, error.message);
+      continue;
     }
   }
   
-  if (verse) {
-    const verseText = demoChapterData[verseNum] || demoVerses["16"];
-    return res.status(200).json({
-      success: true,
-      reference: `${book} ${chapterNum}:${verseNum}`,
-      book: book,
-      chapter: chapterNum,
-      verse: verseNum,
-      text: verseText,
-      demo: true,
-      message: "Using demo data. Please add the complete Amharic Bible JSON file to public/data/amharic-bible.json"
-    });
+  return null;
+}
+
+function findBookData(bibleData, bookName) {
+  const searchNames = [
+    bookName,
+    bookName.toLowerCase(),
+    bookName.charAt(0).toUpperCase() + bookName.slice(1).toLowerCase(),
+    getAmharicBookName(bookName)
+  ];
+  
+  for (const name of searchNames) {
+    if (bibleData[name]) return bibleData[name];
+    if (bibleData[name]?.chapters) return bibleData[name].chapters;
   }
   
-  return res.status(200).json({
-    success: true,
-    reference: `${book} ${chapterNum}`,
-    book: book,
-    chapter: chapterNum,
-    verses: demoChapterData,
-    verseCount: 30,
-    demo: true,
-    message: "Using demo data. Please add the complete Amharic Bible JSON file to public/data/amharic-bible.json"
-  });
+  for (const [key, value] of Object.entries(bibleData)) {
+    if (key.toLowerCase().includes(bookName.toLowerCase())) {
+      return value.chapters || value;
+    }
+  }
+  
+  return null;
 }
 
-// Helper function to normalize book names
-function normalizeBookName(book) {
-  const bookNameMap = {
-    'matthew': 'Matthew',
-    'mark': 'Mark',
-    'luke': 'Luke',
-    'john': 'John',
-    'acts': 'Acts',
-    'romans': 'Romans',
-    '1 corinthians': '1 Corinthians',
-    '2 corinthians': '2 Corinthians',
-    'galatians': 'Galatians',
-    'ephesians': 'Ephesians',
-    'philippians': 'Philippians',
-    'colossians': 'Colossians',
-    '1 thessalonians': '1 Thessalonians',
-    '2 thessalonians': '2 Thessalonians',
-    '1 timothy': '1 Timothy',
-    '2 timothy': '2 Timothy',
-    'titus': 'Titus',
-    'philemon': 'Philemon',
-    'hebrews': 'Hebrews',
-    'james': 'James',
-    '1 peter': '1 Peter',
-    '2 peter': '2 Peter',
-    '1 john': '1 John',
-    '2 john': '2 John',
-    '3 john': '3 John',
-    'jude': 'Jude',
-    'revelation': 'Revelation',
-    
-    // Amharic book names mapping
-    'ማቴዎስ': 'Matthew',
-    'ማርቆስ': 'Mark',
-    'ሉቃስ': 'Luke',
-    'ዮሐንስ': 'John',
-    'ሥራ ሐዋርያት': 'Acts',
-    'ሮሜ': 'Romans',
-    '1 ቆሮንቶስ': '1 Corinthians',
-    '2 ቆሮንቶስ': '2 Corinthians',
-    'ገላትያ': 'Galatians',
-    'ኤፌሶን': 'Ephesians',
-    'ፊልጵስዩስ': 'Philippians',
-    'ቆላስይስ': 'Colossians',
-    '1 ተሰሎንቄ': '1 Thessalonians',
-    '2 ተሰሎንቄ': '2 Thessalonians',
-    '1 ጢሞቴዎስ': '1 Timothy',
-    '2 ጢሞቴዎስ': '2 Timothy',
-    'ቲቶ': 'Titus',
-    'ፊልሞና': 'Philemon',
-    'ዕብራውያን': 'Hebrews',
-    'ያዕቆብ': 'James',
-    '1 ጴጥሮስ': '1 Peter',
-    '2 ጴጥሮስ': '2 Peter',
-    '1 ዮሐንስ': '1 John',
-    '2 ዮሐንስ': '2 John',
-    '3 ዮሐንስ': '3 John',
-    'ይሁዳ': 'Jude',
-    'ራእይ': 'Revelation'
+function getAmharicBookName(englishName) {
+  const bookMap = {
+    'Matthew': 'ማቴዎስ',
+    'Mark': 'ማርቆስ',
+    'Luke': 'ሉቃስ',
+    'John': 'ዮሐንስ',
+    'Acts': 'ሥራ ሐዋርያት',
+    'Romans': 'ሮሜ',
+    '1 Corinthians': '1 ቆሮንቶስ',
+    '2 Corinthians': '2 ቆሮንቶስ',
+    'Galatians': 'ገላትያ',
+    'Ephesians': 'ኤፌሶን',
+    'Philippians': 'ፊልጵስዩስ',
+    'Colossians': 'ቆላስይስ',
+    '1 Thessalonians': '1 ተሰሎንቄ',
+    '2 Thessalonians': '2 ተሰሎንቄ',
+    '1 Timothy': '1 ጢሞቴዎስ',
+    '2 Timothy': '2 ጢሞቴዎስ',
+    'Titus': 'ቲቶ',
+    'Philemon': 'ፊልሞና',
+    'Hebrews': 'ዕብራውያን',
+    'James': 'ያዕቆብ',
+    '1 Peter': '1 ጴጥሮስ',
+    '2 Peter': '2 ጴጥሮስ',
+    '1 John': '1 ዮሐንስ',
+    '2 John': '2 ዮሐንስ',
+    '3 John': '3 ዮሐንስ',
+    'Jude': 'ይሁዳ',
+    'Revelation': 'ራእይ'
+  };
+  return bookMap[englishName] || englishName;
+}
+
+function getDemoAmharicText(book, chapter, verse) {
+  const verseNum = parseInt(verse) || 1;
+  
+  const demoVerses = {
+    1: "በመጀመሪያ እግዚአብሔር ሰማያትንና ምድርን ፈጠረ።",
+    16: "እግዚአብሔር ዓለሙን እንዲሁ ወደደ፤ አንድ ወልድ ልጁን እንኳ ሰጠ፥ በእርሱ የሚያምን ሁሉ ይጠፋ ዘንድ አይደለም ነገር ግን የዘላለም ሕይወት ይኖረው ዘንድ ነው።"
   };
   
-  const lowerBook = book.toLowerCase().trim();
-  return bookNameMap[lowerBook] || book;
+  if (verse && demoVerses[verseNum]) {
+    return demoVerses[verseNum];
+  }
+  
+  return `የ${book} ምዕራፍ ${chapter} በአማርኛ። ይህ የአማርኛ መጽሐፍ ቅዱስ ጽሑፍ ነው። (የማሳያ ጽሑፍ)`;
 }
-
-// Note: We need to import fs and path only when needed
-// This avoids issues if they're not available in some environments
-import fs from 'fs';
-import path from 'path';
