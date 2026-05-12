@@ -44,98 +44,9 @@ const ntBooks = [
     { name: "3 John", chapters: 1 }, { name: "Jude", chapters: 1 }, { name: "Revelation", chapters: 22 }
 ];
 
-// ===== English to Amharic Book Name Mapping =====
-// This maps English book names to their Amharic equivalents in the JSON file
-const englishToAmharicBookMap = {
-    // Gospels
-    "Matthew": "ማቴዎስ",
-    "Mark": "ማርቆስ",
-    "Luke": "ሉቃስ",
-    "John": "ዮሐንስ",
-    
-    // History
-    "Acts": "ሥራ ሐዋርያት",
-    
-    // Pauline Epistles
-    "Romans": "ሮሜ",
-    "1 Corinthians": "1 ቆሮንቶስ",
-    "2 Corinthians": "2 ቆሮንቶስ",
-    "Galatians": "ገላትያ",
-    "Ephesians": "ኤፌሶን",
-    "Philippians": "ፊልጵስዩስ",
-    "Colossians": "ቆላስይስ",
-    "1 Thessalonians": "1 ተሰሎንቄ",
-    "2 Thessalonians": "2 ተሰሎንቄ",
-    "1 Timothy": "1 ጢሞቴዎስ",
-    "2 Timothy": "2 ጢሞቴዎስ",
-    "Titus": "ቲቶ",
-    "Philemon": "ፊልሞና",
-    
-    // General Epistles
-    "Hebrews": "ዕብራውያን",
-    "James": "ያዕቆብ",
-    "1 Peter": "1 ጴጥሮስ",
-    "2 Peter": "2 ጴጥሮስ",
-    "1 John": "1 ዮሐንስ",
-    "2 John": "2 ዮሐንስ",
-    "3 John": "3 ዮሐንስ",
-    "Jude": "ይሁዳ",
-    
-    // Prophecy
-    "Revelation": "ራእይ"
-};
-
-// Reverse mapping for any Amharic to English lookups (if needed)
-const amharicToEnglishBookMap = Object.fromEntries(
-    Object.entries(englishToAmharicBookMap).map(([eng, amh]) => [amh, eng])
-);
-
-// Function to convert English book name to Amharic for API calls
-function getAmharicBookName(englishBookName) {
-    // Handle variations (like "1 Corinthians" vs "1Corinthians")
-    let normalizedName = englishBookName.trim();
-    
-    // Map common variations
-    if (normalizedName === "1 Corinthians" || normalizedName === "1Corinthians" || normalizedName === "1 cor") {
-        return englishToAmharicBookMap["1 Corinthians"];
-    }
-    if (normalizedName === "2 Corinthians" || normalizedName === "2Corinthians" || normalizedName === "2 cor") {
-        return englishToAmharicBookMap["2 Corinthians"];
-    }
-    if (normalizedName === "1 Thessalonians" || normalizedName === "1Thessalonians") {
-        return englishToAmharicBookMap["1 Thessalonians"];
-    }
-    if (normalizedName === "2 Thessalonians" || normalizedName === "2Thessalonians") {
-        return englishToAmharicBookMap["2 Thessalonians"];
-    }
-    if (normalizedName === "1 Timothy" || normalizedName === "1Timothy") {
-        return englishToAmharicBookMap["1 Timothy"];
-    }
-    if (normalizedName === "2 Timothy" || normalizedName === "2Timothy") {
-        return englishToAmharicBookMap["2 Timothy"];
-    }
-    if (normalizedName === "1 Peter" || normalizedName === "1Peter") {
-        return englishToAmharicBookMap["1 Peter"];
-    }
-    if (normalizedName === "2 Peter" || normalizedName === "2Peter") {
-        return englishToAmharicBookMap["2 Peter"];
-    }
-    if (normalizedName === "1 John" || normalizedName === "1John") {
-        return englishToAmharicBookMap["1 John"];
-    }
-    if (normalizedName === "2 John" || normalizedName === "2John") {
-        return englishToAmharicBookMap["2 John"];
-    }
-    if (normalizedName === "3 John" || normalizedName === "3John") {
-        return englishToAmharicBookMap["3 John"];
-    }
-    
-    return englishToAmharicBookMap[normalizedName] || englishBookName;
-}
-
 // Reading plan structure
 let readingPlan = [];
-const START_DATE = new Date(2026, 4, 13); // May 13, 2026 (month is 0-indexed, so 4 = May)
+const START_DATE = new Date(2026, 4, 13); // May 13, 2026
 
 function generateReadingPlan() {
     const plan = [];
@@ -161,13 +72,11 @@ function generateReadingPlan() {
             if (toTake === 1) {
                 reading.ntPassages.push({ 
                     book: book.name, 
-                    amharicBook: getAmharicBookName(book.name),
                     chapter: ntChapter 
                 });
             } else {
                 reading.ntPassages.push({
                     book: book.name,
-                    amharicBook: getAmharicBookName(book.name),
                     startChapter: ntChapter,
                     endChapter: ntChapter + toTake - 1
                 });
@@ -184,7 +93,6 @@ function generateReadingPlan() {
         
         plan.push(reading);
         day++;
-        
         if (day > 500) break;
     }
     
@@ -202,51 +110,64 @@ function assignDatesToPlan() {
 }
 assignDatesToPlan();
 
-// ===== Amharic Bible Integration (UI remains in English) =====
+// ===== Amharic Bible Integration - Using External API =====
 
 async function fetchAmharicVerse(book, chapter, verse) {
     try {
-        // Use the Amharic book name for the API call
-        const amharicBook = getAmharicBookName(book);
-        const response = await fetch(`/api/amharic-bible?book=${encodeURIComponent(amharicBook)}&chapter=${chapter}&verse=${verse}`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch verse');
-        }
+        const response = await fetch(`/api/amharic-bible?book=${encodeURIComponent(book)}&chapter=${chapter}&verse=${verse}`);
         const data = await response.json();
-        return data.text;
+        
+        if (data.text) {
+            return data.text;
+        } else if (data.verses && data.verses[verse]) {
+            return data.verses[verse];
+        } else {
+            return `የ${book} ${chapter}:${verse} በአማርኛ አልተገኘም።`;
+        }
     } catch (error) {
         console.error('Error fetching Amharic verse:', error);
+        return `የ${book} ${chapter}:${verse} ለማግኘት አልተቻለም።`;
+    }
+}
+
+async function fetchAmharicChapter(book, chapter) {
+    try {
+        const response = await fetch(`/api/amharic-bible?book=${encodeURIComponent(book)}&chapter=${chapter}`);
+        const data = await response.json();
+        
+        if (data.verses) {
+            return data.verses;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching Amharic chapter:', error);
         return null;
     }
 }
 
 async function fetchAmharicPassage(book, startChapter, endChapter, startVerse, endVerse) {
     try {
-        const amharicBook = getAmharicBookName(book);
         let allText = '';
         
         for (let ch = startChapter; ch <= endChapter; ch++) {
-            const response = await fetch(`/api/amharic-bible?book=${encodeURIComponent(amharicBook)}&chapter=${ch}`);
-            if (!response.ok) {
-                continue;
-            }
-            const data = await response.json();
+            const verses = await fetchAmharicChapter(book, ch);
             
-            const verseStart = (ch === startChapter) ? startVerse : 1;
-            let verseEnd = endVerse;
-            if (data.verses) {
-                const maxVerse = Object.keys(data.verses).length;
-                verseEnd = (ch === endChapter) ? Math.min(endVerse, maxVerse) : maxVerse;
-            }
-            
-            if (ch > startChapter) {
-                allText += `\n\n--- ${book} ${ch} ---\n\n`;
-            }
-            
-            for (let v = verseStart; v <= verseEnd; v++) {
-                if (data.verses && data.verses[v]) {
-                    allText += `${v}. ${data.verses[v]}\n\n`;
+            if (verses) {
+                const verseStart = (ch === startChapter) ? startVerse : 1;
+                const verseEnd = (ch === endChapter) ? endVerse : Object.keys(verses).length;
+                
+                if (ch > startChapter) {
+                    allText += `\n\n--- ${book} ${ch} ---\n\n`;
                 }
+                
+                for (let v = verseStart; v <= verseEnd; v++) {
+                    if (verses[v]) {
+                        allText += `${v}. ${verses[v]}\n\n`;
+                    }
+                }
+            } else {
+                allText += `${book} ${ch}: በአማርኛ አልተገኘም።\n\n`;
             }
         }
         
@@ -609,7 +530,7 @@ async function requestNotificationPermission() {
             startNotificationScheduler();
             await sendNotification(
                 '✅ Notifications Enabled',
-                'You will receive reading reminders between 6 AM and 9 PM if you haven\'t completed your daily reading.',
+                'You will receive reading reminders between 6 AM and 9 PM.',
                 'welcome-notification'
             );
         }
