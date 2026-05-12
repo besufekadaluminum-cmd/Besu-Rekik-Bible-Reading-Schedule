@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Reading - 5 Chapters Daily Plan</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#D4AF37">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bible Reading">
+    
+    <!-- Link to Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="images.jpg">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Additional styles for user selector, statistics, and viewing banner */
+        .user-selector {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding: 3rem 1rem;
+            min-height: 60vh;
+            align-items: center;
+            background: linear-gradient(135deg, #f5f0e8 0%, #e8e0d4 100%);
+            flex-wrap: wrap;
+        }
+        
+        .user-card {
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+            width: 220px;
+        }
+        
+        .user-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--gold);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .user-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            transition: transform 0.3s ease;
+            background: linear-gradient(135deg, #D4AF37, #B8860B);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .user-card:hover .user-avatar {
+            transform: scale(1.05);
+        }
+        
+        .user-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--deep-blue);
+            margin-bottom: 0.5rem;
+        }
+        
+        .user-card p {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.5rem;
+        }
+        
+        .pin-hint {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: 0.5rem;
+        }
+        
+        .viewing-banner {
+            background: linear-gradient(135deg, #2c3e66, #1a2a4a);
+            color: var(--gold);
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            margin: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 500;
+        }
+        
+        .back-btn {
+            background: var(--gold);
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            color: var(--deep-blue);
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: #c4a022;
+            transform: scale(1.02);
+        }
+        
+        .stats-container {
+            background: white;
+            border-radius: 20px;
+            padding: 1.25rem;
+            margin: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--gold);
+        }
+        
+        .stats-header h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--deep-blue);
+            margin: 0;
+        }
+        
+        .view-other-btn {
+            background: transparent;
+            border: 1.5px solid var(--gold);
+            padding: 0.4rem 1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            color: var(--deep-blue);
+            transition: all 0.3s ease;
+        }
+        
+        .view-other-btn:hover {
+            background: var(--gold);
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 0.75rem;
+            background: #f8f6f2;
+            border-radius: 16px;
+        }
+        
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--gold-dark);
+            font-family: 'Cormorant Garamond', serif;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--deep-blue);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-family: 'Cormorant Garamond', serif;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: #2e7d32;
+        }
+        
+        .toast.warning {
+            background: #ed6c02;
+        }
+        
+        .toast.error {
+            background: #d32f2f;
+        }
+        
+        .checkbox-wrapper.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .checkbox-wrapper.disabled .checkbox-custom {
+            cursor: not-allowed;
+        }
+        
+        .app-container {
+            display: none;
+        }
+        
+        /* PIN Modal Styles */
+        .pin-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .pin-modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 28px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            border: 2px solid var(--gold);
+        }
+        
+        .pin-modal-content h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: var(--deep-blue);
+            margin-bottom: 0.5rem;
+        }
+        
+        .pin-modal-content p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+        
+        .pin-input-container {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .pin-digit {
+            width: 55px;
+            height: 70px;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            border: 2px solid var(--gold);
+            border-radius: 16px;
+            background: #f8f6f2;
+            font-family: monospace;
+        }
+        
+        .pin-digit:focus {
+            outline: none;
+            border-color: var(--gold-dark);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+        
+        .pin-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+        
+        .pin-submit {
+            background: var(--gold);
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--deep-blue);
+            transition: all 0.3s ease;
+        }
+        
+        .pin-submit:hover {
+            background: #c4a022;
+            transform: scale(1.02);
+        }
+        
+        .pin-cancel {
+            background: #ddd;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+        
+        .pin-cancel:hover {
+            background: #bbb;
+        }
+        
+        .pin-error {
+            color: #d32f2f;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            display: none;
+        }
+        
+        .switch-user-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--gold);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        
+        .switch-user-btn:hover {
+            background: #c4a022;
+            transform: scale(1.02);
+        }
+        
+        @media (max-width: 768px) {
+            .user-selector {
+                gap: 1rem;
+                padding: 2rem 1rem;
+            }
+            
+            .user-card {
+                width: 180px;
+                padding: 1.5rem;
+            }
+            
+            .user-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 2.8rem;
+            }
+            
+            .user-name {
+                font-size: 1.2rem;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .user-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .user-card {
+                width: 240px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .pin-digit {
+                width: 45px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- User Selection Screen -->
+    <div id="user-selector" class="user-selector">
+        <!-- Belidet -->
+        <div class="user-card" id="select-user1">
+            <div class="user-avatar">
+                ✝️
+            </div>
+            <div class="user-name">Belidet</div>
+            <div class="pin-hint">🔒 PIN protected</div>
+            <p>Belidet's Progress</p>
+        </div>
+        
+        <!-- Ephi -->
+        <div class="user-card" id="select-user2">
+            <div class="user-avatar">
+                ✝️
+            </div>
+            <div class="user-name">Ephi</div>
+            <div class="pin-hint">🔒 PIN protected</div>
+            <p>Ephi's Progress</p>
+        </div>
+        
+        <!-- Sari -->
+        <div class="user-card" id="select-user3">
+            <div class="user-avatar">
+                ✝️
+            </div>
+            <div class="user-name">Sari</div>
+            <div class="pin-hint">🔒 PIN protected</div>
+            <p>Sari's Progress</p>
+        </div>
+    </div>
+    
+    <!-- PIN Modal -->
+    <div id="pin-modal" class="pin-modal">
+        <div class="pin-modal-content">
+            <h3 id="pin-user-name">Belidet</h3>
+            <p>Enter your 4-digit PIN to continue</p>
+            <div class="pin-input-container">
+                <input type="password" maxlength="1" class="pin-digit" id="pin-1" autofocus>
+                <input type="password" maxlength="1" class="pin-digit" id="pin-2">
+                <input type="password" maxlength="1" class="pin-digit" id="pin-3">
+                <input type="password" maxlength="1" class="pin-digit" id="pin-4">
+            </div>
+            <div class="pin-buttons">
+                <button id="pin-submit" class="pin-submit">✓ Verify</button>
+                <button id="pin-cancel" class="pin-cancel">✗ Cancel</button>
+            </div>
+            <div id="pin-error" class="pin-error">❌ Wrong PIN! Please try again.</div>
+        </div>
+    </div>
+    
+    <!-- Main App Container -->
+    <div id="app-container" class="app-container">
+        <!-- Switch User Button -->
+        <button id="switch-user-btn" class="switch-user-btn">🔄 Switch User</button>
+        
+        <!-- Viewing Banner (shown when viewing other user) -->
+        <div id="viewing-banner" class="viewing-banner" style="display: none;">
+            <span>👁️ Viewing progress</span>
+            <button id="back-to-self-btn" class="back-btn">← Back to My Progress</button>
+        </div>
+        
+        <!-- Header with Icon -->
+        <header class="header">
+            <div class="header-icon-circle">
+                <div class="icon-circle-frame">
+                    <div class="circle-outer"></div>
+                    <div class="circle-inner"></div>
+                    <img src="images.jpg" alt="Eastern Orthodox Icon of Christ on the Cross" class="orthodox-icon">
+                    <div class="circle-dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </div>
+            </div>
+            <h1 class="app-title">Bible Reading</h1>
+            <p class="app-subtitle">5 Chapters Daily - Complete the Bible</p>
+        </header>
+        
+        <!-- Statistics Section -->
+        <div class="stats-container">
+            <div class="stats-header">
+                <h3>📊 Reading Statistics</h3>
+                <button id="view-other-btn" class="view-other-btn">👥 View</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-completed">0</div>
+                    <div class="stat-label">Days Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-percentage">0%</div>
+                    <div class="stat-label">Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-streak">0</div>
+                    <div class="stat-label">Current Streak</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-nt-read">0</div>
+                    <div class="stat-label">NT Chapters</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-ot-read">0</div>
+                    <div class="stat-label">OT Chapters</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stat-total-chapters">0</div>
+                    <div class="stat-label">Total Chapters</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Today's Reading Highlight -->
+        <div class="today-highlight" id="today-highlight"></div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="progress-stats">
+                <span id="completed-count">0</span>/<span id="total-days">0</span> Days Completed
+            </div>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <!-- Calendar Section -->
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <button id="prev-month" class="calendar-nav">←</button>
+                <h2 id="month-year-display"></h2>
+                <button id="next-month" class="calendar-nav">→</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+            </div>
+            <div id="calendar-days" class="calendar-days"></div>
+        </div>
+
+        <!-- Notification Permission Banner -->
+        <div id="notification-banner" class="notification-banner hidden">
+            <p>🔔 Receive daily reminders for your reading</p>
+            <button id="enable-notifications" class="btn-notification">Enable Reminders</button>
+        </div>
+
+        <!-- Main Reading List -->
+        <main class="reading-list" id="reading-list"></main>
+
+        <!-- Footer with Orthodox Cross -->
+        <footer class="footer">
+            <svg class="orthodox-cross" viewBox="0 0 100 100" width="40" height="40">
+                <line x1="50" y1="20" x2="50" y2="80" stroke="#D4AF37" stroke-width="4"/>
+                <line x1="20" y1="50" x2="80" y2="50" stroke="#D4AF37" stroke-width="4"/>
+                <line x1="50" y1="35" x2="65" y2="50" stroke="#D4AF37" stroke-width="4"/>
+                <line x1="50" y1="65" x2="65" y2="50" stroke="#D4AF37" stroke-width="4"/>
+                <line x1="50" y1="35" x2="35" y2="50" stroke="#D4AF37" stroke-width="4"/>
+                <line x1="50" y1="65" x2="35" y2="50" stroke="#D4AF37" stroke-width="4"/>
+            </svg>
+            <p>Ἐγώ εἰμι τὸ φῶς τοῦ κόσμου</p>
+            <p class="small">(I am the light of the world) - John 8:12</p>
+        </footer>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>

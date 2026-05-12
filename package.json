@@ -1,0 +1,22 @@
+{
+  "name": "bible-reading-tracker",
+  "version": "1.0.0",
+  "description": "Complete the Bible with 5 chapters daily. Started April 13, 2026. For Belidet and Ephi.",
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^0.27.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "bible",
+    "reading",
+    "tracker",
+    "5-chapters",
+    "daily-reading"
+  ],
+  "author": "",
+  "license": "MIT"
+}
