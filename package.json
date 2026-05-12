@@ -1,7 +1,7 @@
 {
-  "name": "bible-reading-tracker",
+  "name": "bible-reading-tracker-nt",
   "version": "1.0.0",
-  "description": "Complete the Bible with 5 chapters daily. Started April 13, 2026. For Belidet and Ephi.",
+  "description": "Read the New Testament with 3 chapters daily. Started May 13, 2026. For Besu and Rekik.",
   "type": "module",
   "dependencies": {
     "@vercel/blob": "^0.27.0"
@@ -12,9 +12,10 @@
   },
   "keywords": [
     "bible",
+    "new-testament",
     "reading",
     "tracker",
-    "5-chapters",
+    "3-chapters",
     "daily-reading"
   ],
   "author": "",
