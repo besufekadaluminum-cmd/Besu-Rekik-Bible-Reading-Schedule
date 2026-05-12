@@ -1,12 +1,11 @@
-// ===== Bible Reading App - 5 Chapters Daily Plan =====
-// Always 5 chapters per day: 1 NT + 4 OT until OT finishes, then 5 NT
-// Start Date: April 13, 2026
+// ===== Bible Reading App - 3 Chapters Daily (New Testament Only) =====
+// Always 3 NT chapters per day
+// Start Date: May 13, 2026
 
 // ===== User PIN Codes =====
 const USER_PINS = {
-    user1: "2721",  // Belidet's PIN
-    user2: "2324",  // Ephi's PIN
-    user3: "2912"   // Sari's PIN
+    user1: "2721",  // Besu's PIN
+    user2: "2324"   // Rekik's PIN
 };
 
 // ===== Vercel Blob Cloud Storage Integration =====
@@ -23,12 +22,11 @@ let pendingUser = null;
 
 // Progress storage
 let userProgress = {
-    user1: { completedDays: [], name: "Belidet" },
-    user2: { completedDays: [], name: "Ephi" },
-    user3: { completedDays: [], name: "Sari" }
+    user1: { completedDays: [], name: "Besu" },
+    user2: { completedDays: [], name: "Rekik" }
 };
 
-// ===== New Testament & Old Testament Bible Data =====
+// ===== New Testament Bible Data (Only NT) =====
 const ntBooks = [
     { name: "Matthew", chapters: 28 }, { name: "Mark", chapters: 16 }, { name: "Luke", chapters: 24 },
     { name: "John", chapters: 21 }, { name: "Acts", chapters: 28 }, { name: "Romans", chapters: 16 },
@@ -41,137 +39,55 @@ const ntBooks = [
     { name: "3 John", chapters: 1 }, { name: "Jude", chapters: 1 }, { name: "Revelation", chapters: 22 }
 ];
 
-const otBooks = [
-    { name: "Genesis", chapters: 50 }, { name: "Exodus", chapters: 40 }, { name: "Leviticus", chapters: 27 },
-    { name: "Numbers", chapters: 36 }, { name: "Deuteronomy", chapters: 34 }, { name: "Joshua", chapters: 24 },
-    { name: "Judges", chapters: 21 }, { name: "Ruth", chapters: 4 }, { name: "1 Samuel", chapters: 31 },
-    { name: "2 Samuel", chapters: 24 }, { name: "1 Kings", chapters: 22 }, { name: "2 Kings", chapters: 25 },
-    { name: "1 Chronicles", chapters: 29 }, { name: "2 Chronicles", chapters: 36 }, { name: "Ezra", chapters: 10 },
-    { name: "Nehemiah", chapters: 13 }, { name: "Esther", chapters: 10 }, { name: "Job", chapters: 42 },
-    { name: "Psalms", chapters: 150 }, { name: "Proverbs", chapters: 31 }, { name: "Ecclesiastes", chapters: 12 },
-    { name: "Song of Solomon", chapters: 8 }, { name: "Isaiah", chapters: 66 }, { name: "Jeremiah", chapters: 52 },
-    { name: "Lamentations", chapters: 5 }, { name: "Ezekiel", chapters: 48 }, { name: "Daniel", chapters: 12 },
-    { name: "Hosea", chapters: 14 }, { name: "Joel", chapters: 3 }, { name: "Amos", chapters: 9 },
-    { name: "Obadiah", chapters: 1 }, { name: "Jonah", chapters: 4 }, { name: "Micah", chapters: 7 },
-    { name: "Nahum", chapters: 3 }, { name: "Habakkuk", chapters: 3 }, { name: "Zephaniah", chapters: 3 },
-    { name: "Haggai", chapters: 2 }, { name: "Zechariah", chapters: 14 }, { name: "Malachi", chapters: 4 }
-];
-
 // Reading plan structure
 let readingPlan = [];
-const START_DATE = new Date(2026, 3, 13);
+const START_DATE = new Date(2026, 4, 13); // May 13, 2026 (month is 0-indexed, so 4 = May)
 
 function generateReadingPlan() {
     const plan = [];
     let ntBookIndex = 0, ntChapter = 1;
-    let otBookIndex = 0, otChapter = 1;
-    let ntCompleted = false, otCompleted = false;
     let day = 1;
+    const CHAPTERS_PER_DAY = 3;
     
-    while (!ntCompleted || !otCompleted) {
+    while (ntBookIndex < ntBooks.length) {
         const reading = {
             day: day,
             ntPassages: [],
-            otPassages: [],
             completed: false,
             isCurrent: false,
             date: null
         };
         
         let chaptersAdded = 0;
-        const targetChapters = 5;
         
-        if (!otCompleted) {
-            let otChaptersToAdd = Math.min(4, targetChapters - chaptersAdded);
-            let otAdded = 0;
+        while (chaptersAdded < CHAPTERS_PER_DAY && ntBookIndex < ntBooks.length) {
+            const book = ntBooks[ntBookIndex];
+            const remainingInBook = book.chapters - ntChapter + 1;
+            const toTake = Math.min(CHAPTERS_PER_DAY - chaptersAdded, remainingInBook);
             
-            while (otAdded < otChaptersToAdd && otBookIndex < otBooks.length) {
-                const book = otBooks[otBookIndex];
-                const remainingInBook = book.chapters - otChapter + 1;
-                const toTake = Math.min(otChaptersToAdd - otAdded, remainingInBook);
-                
-                reading.otPassages.push({
-                    book: book.name,
-                    startChapter: otChapter,
-                    endChapter: otChapter + toTake - 1
-                });
-                
-                otChapter += toTake;
-                otAdded += toTake;
-                chaptersAdded += toTake;
-                
-                if (otChapter > book.chapters) {
-                    otBookIndex++;
-                    otChapter = 1;
-                }
-            }
-            
-            if (otBookIndex >= otBooks.length) {
-                otCompleted = true;
-            }
-            
-            if (chaptersAdded < targetChapters && !ntCompleted && ntBookIndex < ntBooks.length) {
-                const book = ntBooks[ntBookIndex];
+            if (toTake === 1) {
                 reading.ntPassages.push({ book: book.name, chapter: ntChapter });
-                chaptersAdded++;
-                
-                if (ntChapter < book.chapters) {
-                    ntChapter++;
-                } else {
-                    ntBookIndex++;
-                    ntChapter = 1;
-                }
-                
-                if (ntBookIndex >= ntBooks.length) {
-                    ntCompleted = true;
-                }
+            } else {
+                reading.ntPassages.push({
+                    book: book.name,
+                    startChapter: ntChapter,
+                    endChapter: ntChapter + toTake - 1
+                });
             }
-        }
-        
-        if (otCompleted && !ntCompleted) {
-            let ntChaptersToAdd = targetChapters - chaptersAdded;
-            let ntAdded = 0;
             
-            while (ntAdded < ntChaptersToAdd && ntBookIndex < ntBooks.length) {
-                const book = ntBooks[ntBookIndex];
-                const remainingInBook = book.chapters - ntChapter + 1;
-                const toTake = Math.min(ntChaptersToAdd - ntAdded, remainingInBook);
-                
-                if (toTake === 1) {
-                    reading.ntPassages.push({ book: book.name, chapter: ntChapter });
-                } else {
-                    reading.ntPassages.push({
-                        book: book.name,
-                        startChapter: ntChapter,
-                        endChapter: ntChapter + toTake - 1
-                    });
-                }
-                
-                ntChapter += toTake;
-                ntAdded += toTake;
-                chaptersAdded += toTake;
-                
-                if (ntChapter > book.chapters) {
-                    ntBookIndex++;
-                    ntChapter = 1;
-                }
-                
-                if (ntBookIndex >= ntBooks.length) {
-                    ntCompleted = true;
-                    break;
-                }
+            ntChapter += toTake;
+            chaptersAdded += toTake;
+            
+            if (ntChapter > book.chapters) {
+                ntBookIndex++;
+                ntChapter = 1;
             }
-        }
-        
-        if (ntCompleted && otCompleted) {
-            if (reading.ntPassages.length > 0 || reading.otPassages.length > 0) {
-                plan.push(reading);
-            }
-            break;
         }
         
         plan.push(reading);
         day++;
+        
+        // Safety break to prevent infinite loop
         if (day > 500) break;
     }
     
@@ -293,7 +209,6 @@ function calculateStatistics(userId) {
     }
     
     let ntChaptersRead = 0;
-    let otChaptersRead = 0;
     
     completedDaysArray.forEach(dayNum => {
         const day = readingPlan[dayNum - 1];
@@ -301,9 +216,6 @@ function calculateStatistics(userId) {
             day.ntPassages.forEach(p => {
                 if (p.chapter) ntChaptersRead += 1;
                 else if (p.startChapter && p.endChapter) ntChaptersRead += (p.endChapter - p.startChapter + 1);
-            });
-            day.otPassages.forEach(p => {
-                otChaptersRead += (p.endChapter - p.startChapter + 1);
             });
         }
     });
@@ -314,8 +226,7 @@ function calculateStatistics(userId) {
         percentage: percentage,
         currentStreak: currentStreak,
         ntChaptersRead: ntChaptersRead,
-        otChaptersRead: otChaptersRead,
-        totalChaptersRead: ntChaptersRead + otChaptersRead
+        totalChaptersRead: ntChaptersRead
     };
 }
 
@@ -329,14 +240,12 @@ function updateStatistics(viewing = false) {
     const percentageEl = document.getElementById('stat-percentage');
     const streakEl = document.getElementById('stat-streak');
     const ntReadEl = document.getElementById('stat-nt-read');
-    const otReadEl = document.getElementById('stat-ot-read');
     const totalChaptersEl = document.getElementById('stat-total-chapters');
     
     if (completedEl) completedEl.textContent = stats.completedDays;
     if (percentageEl) percentageEl.textContent = `${stats.percentage}%`;
     if (streakEl) streakEl.textContent = stats.currentStreak;
     if (ntReadEl) ntReadEl.textContent = stats.ntChaptersRead;
-    if (otReadEl) otReadEl.textContent = stats.otChaptersRead;
     if (totalChaptersEl) totalChaptersEl.textContent = stats.totalChaptersRead;
 }
 
@@ -410,7 +319,7 @@ function toggleDay(dayNum) {
     }
 }
 
-function formatPassage(ntPassages, otPassages) {
+function formatPassage(ntPassages) {
     let html = '';
     
     if (ntPassages && ntPassages.length > 0) {
@@ -428,18 +337,6 @@ function formatPassage(ntPassages, otPassages) {
         html += `</span></div>`;
     }
     
-    if (otPassages && otPassages.length > 0) {
-        html += `<div class="passage-ot">`;
-        html += `<span class="testament-label OT">OT</span>`;
-        html += `<span class="passage-text">`;
-        otPassages.forEach((p, i) => {
-            if (p.startChapter === p.endChapter) html += `${p.book} ${p.startChapter}`;
-            else html += `${p.book} ${p.startChapter}-${p.endChapter}`;
-            if (i < otPassages.length - 1) html += `, `;
-        });
-        html += `</span></div>`;
-    }
-    
     return html || '<span class="no-reading">No reading assigned</span>';
 }
 
@@ -449,7 +346,7 @@ function renderReadingList(viewing = false) {
     container.innerHTML = '';
     
     readingPlan.forEach(day => {
-        const passageHTML = formatPassage(day.ntPassages, day.otPassages);
+        const passageHTML = formatPassage(day.ntPassages);
         const dateText = day.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         const daySuffix = (day.day >= 11 && day.day <= 13) ? 'th' : ['st', 'nd', 'rd'][(day.day % 10) - 1] || 'th';
         
@@ -585,7 +482,7 @@ function updateTodayHighlight(viewing = false) {
         userProgress[targetUser]?.completedDays.includes(todayReading.day);
     
     if (todayReading) {
-        const passageHTML = formatPassage(todayReading.ntPassages, todayReading.otPassages);
+        const passageHTML = formatPassage(todayReading.ntPassages);
         const dateText = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         
         highlightElement.innerHTML = `
@@ -631,9 +528,8 @@ function handleTodayClick(e) {
 function showPinModal(userId) {
     pendingUser = userId;
     let userName = "";
-    if (userId === 'user1') userName = "Belidet";
-    else if (userId === 'user2') userName = "Ephi";
-    else if (userId === 'user3') userName = "Sari";
+    if (userId === 'user1') userName = "Besu";
+    else if (userId === 'user2') userName = "Rekik";
     
     const nameEl = document.getElementById('pin-user-name');
     if (nameEl) nameEl.textContent = userName;
@@ -732,20 +628,17 @@ function completeUserSelection(userId) {
     const viewBtn = document.getElementById('view-other-btn');
     if (viewBtn) {
         if (currentUser === 'user1') {
-            viewBtn.textContent = `👥 View Ephi`;
+            viewBtn.textContent = `👥 View Rekik`;
         } else if (currentUser === 'user2') {
-            viewBtn.textContent = `👥 View Others (Belidet/Sari)`;
-        } else if (currentUser === 'user3') {
-            viewBtn.textContent = `👥 View Ephi`;
+            viewBtn.textContent = `👥 View Besu`;
         }
     }
     
     loadUserProgress();
     
     let welcomeName = "";
-    if (userId === 'user1') welcomeName = "Belidet";
-    else if (userId === 'user2') welcomeName = "Ephi";
-    else if (userId === 'user3') welcomeName = "Sari";
+    if (userId === 'user1') welcomeName = "Besu";
+    else if (userId === 'user2') welcomeName = "Rekik";
     
     showToast(`Welcome, ${welcomeName}! ✝️`, "success");
 }
@@ -763,9 +656,7 @@ function viewOtherUser() {
     if (currentUser === 'user1') {
         availableUsers = ['user2'];
     } else if (currentUser === 'user2') {
-        availableUsers = ['user1', 'user3'];
-    } else if (currentUser === 'user3') {
-        availableUsers = ['user2'];
+        availableUsers = ['user1'];
     }
     
     if (availableUsers.length === 0) {
@@ -774,13 +665,7 @@ function viewOtherUser() {
         return;
     }
     
-    if (otherUser && availableUsers.includes(otherUser)) {
-        const currentOtherIndex = availableUsers.indexOf(otherUser);
-        const nextIndex = (currentOtherIndex + 1) % availableUsers.length;
-        otherUser = availableUsers[nextIndex];
-    } else {
-        otherUser = availableUsers[0];
-    }
+    otherUser = availableUsers[0];
     
     const banner = document.getElementById('viewing-banner');
     if (banner) {
@@ -788,22 +673,9 @@ function viewOtherUser() {
         const span = banner.querySelector('span');
         if (span) {
             let otherName = "";
-            if (otherUser === 'user1') otherName = "Belidet";
-            else if (otherUser === 'user2') otherName = "Ephi";
-            else if (otherUser === 'user3') otherName = "Sari";
+            if (otherUser === 'user1') otherName = "Besu";
+            else if (otherUser === 'user2') otherName = "Rekik";
             span.textContent = `👁️ Viewing ${otherName}'s progress`;
-            
-            const existingHint = span.querySelector('small');
-            if (existingHint) existingHint.remove();
-            
-            if (availableUsers.length > 1) {
-                const hint = document.createElement('small');
-                hint.style.fontSize = '0.7rem';
-                hint.style.marginLeft = '0.5rem';
-                hint.style.opacity = '0.8';
-                hint.textContent = '(click again to cycle)';
-                span.appendChild(hint);
-            }
         }
     }
     loadUserProgress(true);
@@ -857,36 +729,19 @@ function showToast(message, type = "info") {
 document.addEventListener('DOMContentLoaded', async () => {
     const existing1 = loadLocalProgress('user1');
     const existing2 = loadLocalProgress('user2');
-    const existing3 = loadLocalProgress('user3');
     
-    if (existing1.length === 0 && existing2.length === 0) {
-        const preCompleted = [1, 2, 3];
-        userProgress.user1.completedDays = [...preCompleted];
-        userProgress.user2.completedDays = [...preCompleted];
-        preCompleted.forEach(day => {
-            if (readingPlan[day - 1]) readingPlan[day - 1].completed = true;
-        });
-        saveLocalProgress('user1', preCompleted);
-        saveLocalProgress('user2', preCompleted);
-    } else {
-        userProgress.user1.completedDays = existing1;
-        userProgress.user2.completedDays = existing2;
-        existing1.forEach(day => {
-            if (readingPlan[day - 1]) readingPlan[day - 1].completed = true;
-        });
-        existing2.forEach(day => {
-            if (readingPlan[day - 1]) readingPlan[day - 1].completed = true;
-        });
-    }
+    userProgress.user1.completedDays = existing1;
+    userProgress.user2.completedDays = existing2;
     
-    userProgress.user3.completedDays = existing3;
-    existing3.forEach(day => {
+    existing1.forEach(day => {
+        if (readingPlan[day - 1]) readingPlan[day - 1].completed = true;
+    });
+    existing2.forEach(day => {
         if (readingPlan[day - 1]) readingPlan[day - 1].completed = true;
     });
     
     document.getElementById('select-user1')?.addEventListener('click', () => selectUser('user1'));
     document.getElementById('select-user2')?.addEventListener('click', () => selectUser('user2'));
-    document.getElementById('select-user3')?.addEventListener('click', () => selectUser('user3'));
     document.getElementById('pin-submit')?.addEventListener('click', verifyPin);
     document.getElementById('pin-cancel')?.addEventListener('click', cancelPinModal);
     document.getElementById('view-other-btn')?.addEventListener('click', viewOtherUser);
